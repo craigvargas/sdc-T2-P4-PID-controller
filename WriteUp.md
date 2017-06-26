@@ -1,15 +1,19 @@
-##Craig Vargas
-##SDC Nanodegree
-##PID Controller
-##Term 2: Project 2: Reflection
+**Craig Vargas**
+
+**SDC Nanodegree**
+
+**PID Controller**
+
+**Term 2: Project 2: Reflection**
 
 
 
 
-#Effects of each component in the PID controller:
+## Effects of each component in the PID controller:
 
-##Control = - (P * Error) – (I * SumOfErrors) – (D * delta(Error))
-	Where: delta(x) := dx/dt
+**Control = - (P * Error) – (I * SumOfErrors) – (D * delta(Error))**
+
+*Where: delta(x) := dx/dt*
 
 **P:** 
 
@@ -60,9 +64,9 @@ To demonstrate the effect of the D coefficient I’ll show a sequence of videos
 
 
 
-#Final Parameters:
+## Final Parameters:
 
-##Methodology:
+**Methodology:**
 
 I concluded on the final parameters by utilizing the twiddle methodology to adjust each parameter slightly and accept the adjustment if the result was better than the best set of parameters thus far.  
 
@@ -80,7 +84,7 @@ After setting up this structure I started the twiddle algorithm with all coeffic
 
 After many trials with the update parameters “jury rigged”, I was able to settle on the following coefficients:
 
-##**P = 0.2		I = 0.00005		D = 5.0**
+### P = 0.2		I = 0.00005		D = 5.0**
 
 
 
