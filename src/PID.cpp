@@ -9,23 +9,31 @@ using namespace std;
 */
 
 PID::PID() {
-  //lastError = 0;
-  lastCte = -1;
+  // Cross track error
+  lastCte = DBL_MAX;
   cteSum = 0;
+  cteSumSquared = 0;
+  // Variables to keep track of twiddle algorithm
   paramIndex = 0;
   twiddleIndex = 0;
+  /*
+   Variable to keep track of the number of control updates the algorithm is asked for
+   used as a proxy for the distance traveled by the car during a trial
+   */
   numUpdates = 0;
   numUpdatesBest = 0;
   numUpdatesPrev = 0;
+  // Variable to keeep track of the number of times we alter a variable in the twiddle algo
   counter = 0;
-  
-  cteSumSquared = 0;
+  /*
+   Variable to hold the value of a utility function that will ultimately be used
+   to grade how well a trial did. Used as the function to maximize
+   */
   utility = 0;
   utilityBest = 0;
   utilityPrev = 0;
-  
+  // Tells weather this this is the car's initial run
   isFirstTrial = true;
-  
 }
 
 PID::~PID() {}
@@ -67,7 +75,7 @@ double PID::GetSteering(double lastSteering, double cte){
   double I = kList[1];
   double D = kList[2];
   
-  /*
+  /* Debugging
   cout<<endl;
   cout<<"=========================================\n";
   cout<<"Before steering calc:\n\n";
@@ -99,16 +107,37 @@ void PID::IncParamIndex(){
 
 void PID::NextCycle(){
   
+  /* 
+   help adjust for a nuance in how messages come in from the simulator.
+   After a reset the simulator sends a message that makes the algorithm
+   thinks its time to evaluate a trial but in reality the car hasn't
+   moved yet.  This condition helps prevent twiddle from updating 
+   variables when no new information is available to update and evaluate.
+   */
   if(numUpdates<=1){
     return;
   }
   
-  if(numUpdates > 900){
-    utility = -cteSumSquared; // numUpdates - fabs(cteSum);
-  }else{
-    utility = -DBL_MAX;
-  }
+  /*
+   The condtional structure below is used to onnly give credibility to
+   trials where the car drove a minimum distance.  This was needed when
+   the controller was evaluated based on minimum cte_squared.  Whacky 
+   controls that drove straight off of the road were considered good
+   by the algorithm because the cte_squared was low, but it was only 
+   low because the conrols were so bad the car never had a chance to 
+   drive anywhere.  The function to evaluate the goodness of the 
+   controller was later altreed so that this
+   */
+//  if(numUpdates > 900){
+//    utility = numUpdates - cteSumSquared; // numUpdates - fabs(cteSum);
+//  }else{
+//    utility = -DBL_MAX;
+//  }
   
+  /*
+   If we evaluating the first trial then force its value to be the best
+   value so far.
+   */
   if(isFirstTrial){
     numUpdatesBest = numUpdates;
     utilityBest = utility;
@@ -127,15 +156,17 @@ void PID::NextCycle(){
   switch (twiddleIndex) {
       
     case 0:
-      //p += dp
+      //Try adjusting the varible by the current delta value: p += dp
       kList[paramIndex] += dkList[paramIndex];
       IncTwiddleIndex();
       break;
     case 1:
-      //if(better outcome) save outcome, dp *= 1.1, move to next param
-      //else p -= 2*dp
-//      if(numUpdates > numUpdatesBest){
+      /*
+       if(better outcome) save outcome, dp *= 1.1, move to next param
+       else try adjusting the varibe in the other direciton: p -= 2*dp
+       */
       if(utility > utilityBest){
+        cout<<"*** Utility increased. New variable value saved ***"<<endl;
         numUpdatesBest = numUpdates;
         utilityBest = utility;
         dkList[paramIndex] *= 1.1;
@@ -146,10 +177,12 @@ void PID::NextCycle(){
       }
       break;
     case 2:
-      //if(better outcome) save outcome, dp *= 1.1, move to next param
-      //else p += dp (p <- original_value), dp *= 0.9, move to next param
-//      if(numUpdates > numUpdatesBest){
+      /*
+       if(better outcome) save outcome, dp *= 1.1, move to next param
+       else p += dp (p <- original_value), dp *= 0.9, move to next param
+       */
       if(utility > utilityBest){
+        cout<<"*** Utility increased. New variable value saved ***"<<endl;
         numUpdatesBest = numUpdates;
         utilityBest = utility;
         dkList[paramIndex] *= 1.1;
@@ -163,7 +196,8 @@ void PID::NextCycle(){
     default:
       cout<<endl;
       cout<<"=============================================================="<<endl;
-      cout<<"WARNING: Unhandled case statemet in GetFactor. twiddleIndex: " << twiddleIndex << endl;
+      cout<<"WARNING: Unhandled value in switch statemet in GetFactor. twiddleIndex: ";
+      cout<< twiddleIndex << endl;
       cout<<"=============================================================="<<endl;
       break;
   }
@@ -176,7 +210,12 @@ void PID::NextCycle(){
   cout<<"=============================================================="<<endl<<endl;
   
   if(twiddleIndex == 0){
-    //Don't repeat a trial that you've already seen
+    /*
+     When twiddleIndex == 0 we adjust the variable back to its old value.  
+     This means the state of the control variables are back to the values
+     that produced the last best result.  We've already seen this trial so
+     we should force the algo to evaluate the next variable
+     */
     cout<<"\n\n********** SKIP CYCLE **********\n\n";
     //p += dp
     kList[paramIndex] += dkList[paramIndex];
@@ -209,79 +248,10 @@ void PID::Print(){
   cout<<"Count: " << counter << endl;
 }
 
-void PID::LogToFile(ofstream &myfile){
-  double P = kList[0];
-  double I = kList[1];
-  double D = kList[2];
-  myfile<<"P: " << P << "  I: " << I << "  D: " << D << endl;
-}
-
-/*
-
-void PID::UpdateP(){
-  Kp *= GetFactor();
-}
-
-void PID::UpdateI(){
-  Ki *= GetFactor();
-}
-
-void PID::UpdateD(){
-  Kd += GetFactor()
-}
-
-double PID::GetUpdate(unsigned short paramIndex){
-  double param = GetParam(paramIndex);
-  
-  switch (twiddleIndex) {
-    case 0:
-      //p += dp
-      param += 
-      break;
-    case 1:
-      return 0.9
-      break;
-    case 2:
-      return 0.9
-      break;
-    case 3:
-      return 0.9
-      break;
-    default:
-      cout<<endl<<"=============================================================="<<endl;
-      cout<<"WARNING: Unhandled case statemet in GetFactor. twiddleIndex: " << twiddleIndex << endl;
-      cout<<endl<<"=============================================================="<<endl;
-      break;
-  }
-  if(numUpdates > numUpdatesBest){
-    numUpdatesBest = numUpdates;
-  }
-}
-
-double PID::GetParam(unsigned short paramIndex){
-  double param = GetParam(paramIndex);
-  
-  switch (paramIndex) {
-    case 0:
-      return Kp;
-      break;
-    case 1:
-      return Ki;
-      break;
-    case 2:
-      return Kd;
-      break;
-    default:
-      cout<<endl<<"=============================================================="<<endl;
-      cout<<"WARNING: Unhandled case statemet in GetParam. paramIndex: " << paramIndex << endl;
-      cout<<endl<<"=============================================================="<<endl;
-      return Kp;
-      break;
-  }
-}
- 
- */
-
-  
-
+//void PID::LogToFile(ofstream &myfile){
+//  double P = kList[0];
+//  double I = kList[1];
+//  double D = kList[2];
+//  myfile<<"P: " << P << "  I: " << I << "  D: " << D << endl;
+//}
 

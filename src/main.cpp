@@ -46,82 +46,11 @@ int main()
   PID pid;
   // TODO: Initialize the pid variable.
   pid = PID();
-//  pid.Init(0.02, 0.001, 0.3);
-//  pid.SetDeltas(0.3, 0.3, 0.3);
   
-//  //Special init (Continuation)
-//  pid.Init(0.8, 0.01, 4.15);
-//  pid.SetDeltas(0.25, 0.005, 1);
-
-//  //Regular init
-  pid.Init(0.0, 0.0, 0.0); //P: 1.83383  I: 0.000773084  D: 7.19406
-  pid.SetDeltas(0.1, 0.0001, 10);
-//  pid.SetDeltas(1, 1, 1);
+  //Initialization to complete the course
+  pid.Init(0.21, 0.00005, 5.0); //
+  pid.SetDeltas(0.1, 0.00001, 1);
   
-  
-  //pid.Init(2, 0.000773084, 20); //Works!!!
-//  pid.Init(2, 0.000773084, 100); //Works smoother
-//  pid.Init(1, 0.000773084, 100); //Works
-//  pid.Init(0.7, 0.000773084, 100); //Final
-  //pid.Init(0.3, 0.000773084, 30); //Best
-//  pid.Init(0.3, 0.000773084, 50); //DONE!!!!!
-  
-  //  //Learned on its own.  MAX_ERROR = 2.5
-//  pid.Init(0.0, 0.0, 0.0);
-//  pid.SetDeltas(0.1, 0.0001, 10);
-  /*
-   ==============================================================
-   PID Update:
-   Cycle idices -> twiddleIndex: 2  paramIndex: 1
-   ==============================================================
-   Before Update:
-   P: 0.21  I: -0.00010801  D: 0
-   dP: 0.088209  dI: 9.801e-05  dD: 6.561
-   Last numUpdates: 1237  Best numUpdates: 1246
-   Last utility: -587.708  Best utility: -461.79
-   Count: 25
-   
-   After Update:
-   P: 0.21  I: -1e-05  D: 0
-   dP: 0.088209  dI: 8.8209e-05  dD: 6.561
-   Last numUpdates: 1387  Best numUpdates: 1246
-   Last utility: -650.066  Best utility: -461.79
-   Count: 26
-   ==============================================================
-   ==============================================================
-   */
-  
-  
-  //  //Learned on its own.  MAX_ERROR = 2.0
-  //  pid.Init(0.0, 0.0, 0.0);
-  //  pid.SetDeltas(0.1, 0.0001, 10);
-  /*
-   ==============================================================
-   PID Update:
-   Cycle idices -> twiddleIndex: 1  paramIndex: 1
-   ==============================================================
-   Before Update:
-   P: 0.21  I: 0.00021  D: 0
-   dP: 0.121  dI: 0.00011  dD: 9
-   Last numUpdates: 1224  Best numUpdates: 1224
-   Last utility: -555.183  Best utility: -555.183
-   Count: 6
-   
-   After Update:
-   P: 0.21  I: 0.00021  D: 0
-   dP: 0.121  dI: 0.000121  dD: 9
-   Last numUpdates: 1067  Best numUpdates: 1067
-   Last utility: -476.273  Best utility: -476.273
-   Count: 7
-   ==============================================================
-   ==============================================================
-   */
-  
-  
-  
-//  ofstream myfile;
-//  myfile.open("debug.txt");
-
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -133,6 +62,7 @@ int main()
         auto j = json::parse(s);
         std::string event = j[0].get<std::string>();
         if (event == "telemetry") {
+          // Error threashold to stop the current trial and reevaluate twiddle
           const double MAX_ERROR = 2.0;
           // j[1] is the data JSON object
           double cte = std::stod(j[1]["cte"].get<std::string>());
@@ -147,14 +77,13 @@ int main()
           */
           
           if(fabs(cte) > MAX_ERROR){
+            // Car has gone too far off of the track so reevaluate twiddle
             pid.NextCycle();
-//            pid.LogToFile(myfile);
             reset_simulator(ws);
             return;
           }
           
           steer_value = pid.GetSteering(angle, cte);
-          
           
           // DEBUG
           //std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
